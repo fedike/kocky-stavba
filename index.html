@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stavby z kociek</title>
+<style>
+  :root{
+    --hrana:#075BCB;
+    --text:#0B1F3A;
+    --pozadie:#EDF2F9;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  [hidden]{display:none !important;}
+  html,body{height:100%;}
+  body{
+    font-family:system-ui,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    background:var(--pozadie);
+    color:var(--text);
+    overflow:hidden;
+  }
+  #app{
+    height:100vh;height:100dvh;
+    display:flex;flex-direction:column;
+    touch-action:manipulation;
+    user-select:none;-webkit-user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  button{font-family:inherit;color:inherit;cursor:pointer;background:none;border:none;}
+  button:focus-visible,[tabindex="0"]:focus-visible{outline:4px solid #0B1F3A;outline-offset:2px;border-radius:6px;}
+  button:disabled{cursor:default;}
+
+  header{
+    flex:0 0 auto;
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;padding:4px 16px;
+  }
+  h1{font-size:clamp(20px,3.4vh,32px);font-weight:800;letter-spacing:.05em;}
+  .tlacidlo-ozdobne{
+    min-height:clamp(48px,6vh,60px);padding:4px 18px;border-radius:10px;
+    border:2px solid #7E93AC;background:#fff;color:#41546E;
+    font-size:clamp(12px,1.8vh,16px);font-weight:700;letter-spacing:.03em;
+  }
+
+  main{flex:1 1 auto;min-height:0;position:relative;}
+  section{
+    position:absolute;inset:0;min-height:0;
+    display:flex;flex-direction:column;align-items:center;
+    padding:4px 18px 10px;
+  }
+  section[hidden]{display:none;}
+
+  /* ---------- PRÍPRAVA / OTÁZKA ---------- */
+  #priprava-stred{
+    flex:1 1 auto;min-height:0;width:100%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:8px;
+  }
+  #mriezka{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(4,1fr);
+    gap:6px;padding:8px;
+    background:#fff;border:3px solid var(--hrana);border-radius:12px;
+  }
+  .pole{
+    display:flex;align-items:center;justify-content:center;
+    background:#FCFDFF;border:2px solid #A9C6E8;border-radius:8px;
+    font-size:var(--cislo,52px);font-weight:800;line-height:1;
+    color:var(--text);
+  }
+  .pole.nula{color:#93A9C2;}
+  .pole:active:not(:disabled){background:#E4EEFB;}
+  .pole:disabled{cursor:default;}
+  #napoveda{
+    font-size:clamp(12px,1.9vh,17px);font-weight:600;color:#64789A;letter-spacing:.03em;
+    text-align:center;
+  }
+  #paleta{flex:0 0 auto;display:flex;justify-content:center;gap:14px;padding:8px 0 2px;}
+  #paleta .farba{
+    position:relative;
+    display:flex;align-items:center;justify-content:center;
+    background:#fff;border:4px solid #C6D6E9;border-radius:14px;padding:6px;
+  }
+  #paleta .farba[aria-pressed="true"]{border-color:var(--text);}
+  #paleta .farba svg{display:block;width:var(--kocka,92px);height:var(--kocka,92px);}
+  #paleta .znacka{
+    position:absolute;top:-11px;right:-11px;
+    width:clamp(24px,3.2vh,32px);height:clamp(24px,3.2vh,32px);border-radius:50%;
+    background:var(--text);color:#fff;border:2px solid #fff;
+    display:none;align-items:center;justify-content:center;
+    font-size:clamp(14px,2vh,19px);font-weight:800;line-height:1;
+  }
+  #paleta .farba[aria-pressed="true"] .znacka{display:flex;}
+  #paleta .farba:disabled{cursor:default;}
+  #sec-priprava.neaktivne #mriezka,
+  #sec-priprava.neaktivne #paleta{opacity:.55;}
+
+  #akcia{flex:0 0 auto;display:flex;justify-content:center;padding:8px 0 2px;}
+  .tlacidlo-velke{
+    min-height:64px;min-width:150px;padding:8px 32px;border-radius:14px;
+    border:3px solid var(--text);background:#fff;
+    font-size:clamp(20px,3.2vh,30px);font-weight:800;letter-spacing:.04em;
+  }
+  .tlacidlo-velke:disabled{opacity:.4;}
+  #riadok-postav{display:flex;align-items:center;gap:20px;}
+  .udaj{font-size:clamp(15px,2.4vh,22px);font-weight:800;letter-spacing:.06em;color:#41546E;}
+  #blok-otazka{display:flex;flex-direction:column;align-items:center;gap:8px;}
+  #otazka-hore{display:flex;align-items:baseline;justify-content:center;gap:18px;flex-wrap:wrap;}
+  .otazka-text{font-size:clamp(22px,3.6vh,34px);font-weight:800;letter-spacing:.04em;}
+  #otazka-sprava{font-size:clamp(15px,2.4vh,21px);font-weight:700;color:#A61B1B;}
+  #otazka-tlacidla{display:flex;gap:22px;}
+  #btn-ano{background:#21CA14;}
+  #btn-nie{background:#F12B30;color:#fff;}
+
+  /* ---------- MODEL ---------- */
+  #model-plocha{
+    flex:1 1 auto;min-height:0;width:100%;
+    background:#fff;border-radius:16px;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+  }
+  #model-sipky{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:10px;max-width:100%;max-height:100%;padding:10px;
+  }
+  #model-stred{display:flex;align-items:center;gap:14px;min-height:0;}
+  #model-svg{
+    display:flex;align-items:center;justify-content:center;
+    min-width:0;min-height:0;cursor:pointer;
+  }
+  #model-svg svg{display:block;}
+  .sipka{
+    flex:0 0 auto;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+    min-width:92px;min-height:92px;padding:6px 8px;border-radius:16px;
+    border:3px solid #C6D6E9;background:#fff;
+  }
+  .sipka .sip-glyph{width:42px;height:42px;}
+  .sip-glyph path{fill:none;stroke:var(--hrana);stroke-width:7;stroke-linecap:round;stroke-linejoin:round;}
+  .sipka span{font-size:clamp(11px,1.7vh,15px);font-weight:800;color:#41546E;letter-spacing:.05em;}
+  .sipka[aria-pressed="true"]{border-color:var(--text);background:#E8F1FC;}
+  .sipka[aria-pressed="true"] span{color:var(--text);}
+  #model-hint{
+    flex:0 0 auto;padding:10px 0 2px;text-align:center;
+    font-size:clamp(13px,2vh,18px);font-weight:700;color:#64789A;letter-spacing:.05em;
+  }
+
+  /* ---------- PREHĽAD ---------- */
+  #prehlad-miesta{
+    flex:1 1 auto;min-height:0;width:100%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:14px;
+  }
+  .prehlad-riadok{display:flex;justify-content:center;gap:14px;min-height:0;max-width:100%;}
+  .miesto{display:flex;flex-direction:column;align-items:center;gap:8px;flex:0 0 auto;}
+  .miesto-cislo{
+    flex:0 0 auto;
+    min-width:96px;padding:2px 24px;border-radius:14px;
+    border:3px solid var(--hrana);background:#fff;
+    font-size:clamp(22px,3.4vh,34px);font-weight:800;
+  }
+  .miesto-cislo.odhalene{background:var(--hrana);color:#fff;}
+  .miesto-model{
+    width:100%;flex:1 1 auto;min-height:0;
+    background:#fff;border-radius:14px;
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;
+  }
+  #prehlad-tlacidla{
+    flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+    gap:18px;padding:10px 0 2px;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>STAVBY Z KOCIEK</h1>
+    <button type="button" id="btn-fullscreen" class="tlacidlo-ozdobne">CELÁ OBRAZOVKA</button>
+  </header>
+
+  <main>
+    <!-- PRÍPRAVA a OTÁZKA zdieľajú rozloženie -->
+    <section id="sec-priprava">
+      <div id="priprava-stred">
+        <div id="mriezka" role="group" aria-label="Pôdorys stavby 4 krát 4"></div>
+        <div id="napoveda">ŤUKNI: 0 → 1 → 2 → 3 → 4 → 5 → 0</div>
+      </div>
+      <div id="paleta" role="group" aria-label="Výber farby kocky"></div>
+      <div id="akcia">
+        <div id="riadok-postav">
+          <button type="button" id="btn-postav" class="tlacidlo-velke">POSTAV STAVBU</button>
+          <div id="udaj-cislo" class="udaj">STAVBA 1 / 6</div>
+        </div>
+        <div id="blok-otazka" hidden>
+          <div id="otazka-hore">
+            <span id="otazka-cislo" class="udaj">STAVBA 1 / 6</span>
+            <span class="otazka-text">CHCEŠ POKRAČOVAŤ?</span>
+            <span id="otazka-sprava" hidden>MÁŠ HOTOVÝCH 6 STAVIEB.</span>
+          </div>
+          <div id="otazka-tlacidla">
+            <button type="button" id="btn-ano" class="tlacidlo-velke">ÁNO</button>
+            <button type="button" id="btn-nie" class="tlacidlo-velke">NIE</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VELKÝ MODEL -->
+    <section id="sec-model" hidden>
+      <div id="model-plocha">
+        <div id="model-sipky">
+          <button type="button" class="sipka" data-pohlad="zhora" aria-pressed="false">
+            <svg viewBox="0 0 64 64" aria-hidden="true" class="sip-glyph" style="transform:rotate(90deg)"><path d="M8 32 H48 M36 17 L52 32 L36 47"/></svg>
+            <span>ZHORA</span>
+          </button>
+          <div id="model-stred">
+            <button type="button" class="sipka" data-pohlad="zlava" aria-pressed="false">
+              <svg viewBox="0 0 64 64" aria-hidden="true" class="sip-glyph"><path d="M8 32 H48 M36 17 L52 32 L36 47"/></svg>
+              <span>ZĽAVA</span>
+            </button>
+            <div id="model-svg" tabindex="0" role="button"
+                 aria-label="Model stavby. Dvojitým kliknutím alebo klávesou Enter ukončíš zobrazenie."></div>
+            <button type="button" class="sipka" data-pohlad="sprava" aria-pressed="false">
+              <svg viewBox="0 0 64 64" aria-hidden="true" class="sip-glyph" style="transform:rotate(180deg)"><path d="M8 32 H48 M36 17 L52 32 L36 47"/></svg>
+              <span>SPRAVA</span>
+            </button>
+          </div>
+          <button type="button" class="sipka" data-pohlad="zpredu" aria-pressed="true">
+            <svg viewBox="0 0 64 64" aria-hidden="true" class="sip-glyph" style="transform:rotate(-90deg)"><path d="M8 32 H48 M36 17 L52 32 L36 47"/></svg>
+            <span>ZPREDU</span>
+          </button>
+        </div>
+      </div>
+      <div id="model-hint">DVOJITÝM ŤUKNUTÍM UKONČÍŠ TÚTO STAVBU</div>
+    </section>
+
+    <!-- ZÁVEREČNÝ PREHĽAD -->
+    <section id="sec-prehlad" hidden>
+      <div id="prehlad-miesta"></div>
+      <div id="prehlad-tlacidla">
+        <button type="button" id="btn-ukaz-vsetky" class="tlacidlo-velke">UKÁŽ VŠETKY STAVBY</button>
+        <button type="button" id="btn-novy-cyklus" class="tlacidlo-ozdobne">NOVÝ CYKLUS</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ================= FARBY (prevzaté z prílohy) ================= */
+const FARBY = [
+  {nazov:'žltá',    hex:'#FFDF28'},
+  {nazov:'modrá',   hex:'#2586E9'},
+  {nazov:'zelená',  hex:'#21CA14'},
+  {nazov:'čierna',  hex:'#242424'},
+  {nazov:'červená', hex:'#F12B30'},
+];
+const HRANA = '#075BCB';
+const MAX_STAVIEB = 6;
+const MAX_VYSKA = 5;
+const ODSADENIE = 3; /* rezerva pre obrys pri výpočte rozmeru */
+
+/* ================= STAV ================= */
+let stav = 'PRIPRAVA';            /* PRIPRAVA | MODEL | OTAZKA | PREHLAD */
+let plan = prazdnyPlan();         /* plan[r][c] = pole farieb odspodu nahor (max 5) */
+let vybranaFarba = 0;
+let historia = [];                /* hlboké kópie: {plan, geo} */
+let odhalene = new Set();         /* stav odhalenia, oddelený od dát */
+let casovac = null;
+let sekvenciaBezi = false;
+let mierkaMiniatur = 1;
+let aktualnaGeo = null;
+let aktualnyPlan = null;
+let pohlad = 'zpredu';        /* zpredu | sprava | zlava | zhora */
+let modelSpatDo = 'otazka';   /* kam sa vráti dvojité ťuknutie na model */
+
+const $ = id => document.getElementById(id);
+const secPriprava = $('sec-priprava'), secModel = $('sec-model'), secPrehlad = $('sec-prehlad');
+const mriezka = $('mriezka'), napoveda = $('napoveda'), paleta = $('paleta');
+const riadokPostav = $('riadok-postav'), blokOtazka = $('blok-otazka');
+const btnPostav = $('btn-postav'), udajCislo = $('udaj-cislo');
+const otazkaCislo = $('otazka-cislo'), otazkaSprava = $('otazka-sprava');
+const btnAno = $('btn-ano'), btnNie = $('btn-nie');
+const modelPlocha = $('model-plocha'), modelSvg = $('model-svg'), modelHint = $('model-hint');
+const prehladMiesta = $('prehlad-miesta');
+const btnUkazVsetky = $('btn-ukaz-vsetky'), btnNovyCyklus = $('btn-novy-cyklus');
+const btnFullscreen = $('btn-fullscreen');
+
+function prazdnyPlan(){
+  return Array.from({length:4}, () => Array.from({length:4}, () => []));
+}
+function pocetKociek(p){
+  let n = 0;
+  for(const riadok of p) for(const stlp of riadok) n += stlp.length;
+  return n;
+}
+
+/* ================= GEOMETRIA KOCKY =================
+   Kamera pevná, šikmý (kavaliersky) pôdorysný pohľad:
+   X = 68*x + 21*y ,  Y = −21*y − 68*z
+   x doprava, y dozadu, z nahor. Viditeľné steny: predná (−y),
+   horná (+z), pravá (+x). Kreslenie od zadných k predným.   */
+function projekcia(x, y, z){
+  return [68 * x + 21 * y, -21 * y - 68 * z];
+}
+
+/* Otočenie plánu stavby o 90° okolo zvislej osi (farby kociek zostávajú).
+   sprava = po smere hodinových ručičiek zhora: pravá strana stavby sa otočí ku kamere.
+   zlava  = proti smeru: ľavá strana sa otočí ku kamere. */
+function otocStavbu(stavba, smer){
+  const nova = prazdnyPlan();
+  for(let r = 0; r < 4; r++){
+    for(let c = 0; c < 4; c++){
+      if(smer === 'sprava') nova[c][3 - r] = stavba[r][c].slice();
+      else                  nova[3 - c][r] = stavba[r][c].slice();
+    }
+  }
+  return nova;
+}
+
+function geometria(stavba, p){
+  let P, KLUC, data = stavba;
+  if(p === 'zhora'){
+    /* Pohľad zhora (plan-oblique): vodorovná rovina sa premieta priamo
+       (x doprava, y dozadu hore), výška je šikmý odstup doľava hore.
+       Viditeľné steny: horná, predná a pravá. Predný rad zostáva dole. */
+    P = (x, y, z) => [68 * x - 21 * z, -68 * y - 21 * z];
+    KLUC = (x, y, z) => 21 * x - 21 * y + 68 * z;
+  }else{
+    if(p === 'sprava') data = otocStavbu(stavba, 'sprava');
+    else if(p === 'zlava') data = otocStavbu(stavba, 'zlava');
+    P = projekcia;
+    KLUC = (x, y, z) => 21 * x - 68 * y + 21 * z; /* hĺbkové triedenie: menšie = ďalej */
+  }
+  const steny = [];
+  const obsadene = (x, y, z) =>
+    x >= 0 && x < 4 && y >= 0 && y < 4 && z >= 0 && z < data[3 - y][x].length;
+  for(let r = 0; r < 4; r++){
+    for(let x = 0; x < 4; x++){
+      const y = 3 - r, stlp = data[r][x];
+      for(let z = 0; z < stlp.length; z++){
+        const farba = FARBY[stlp[z]].hex;
+        const kluc = KLUC(x, y, z);
+        if(!obsadene(x, y - 1, z))  /* predná stena */
+          steny.push({kluc, farba, body: [
+            P(x, y, z), P(x + 1, y, z),
+            P(x + 1, y, z + 1), P(x, y, z + 1)]});
+        if(!obsadene(x, y, z + 1))  /* horná stena */
+          steny.push({kluc, farba, body: [
+            P(x, y, z + 1), P(x + 1, y, z + 1),
+            P(x + 1, y + 1, z + 1), P(x, y + 1, z + 1)]});
+        if(!obsadene(x + 1, y, z))  /* pravá stena */
+          steny.push({kluc, farba, body: [
+            P(x + 1, y, z), P(x + 1, y + 1, z),
+            P(x + 1, y + 1, z + 1), P(x + 1, y, z + 1)]});
+      }
+    }
+  }
+  steny.sort((a, b) => a.kluc - b.kluc);
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for(const s of steny) for(const [px, py] of s.body){
+    if(px < minX) minX = px; if(px > maxX) maxX = px;
+    if(py < minY) minY = py; if(py > maxY) maxY = py;
+  }
+  const polygony = steny.map(s => ({
+    body: s.body.map(p => p[0] + ',' + p[1]).join(' '),
+    farba: s.farba
+  }));
+  return {polygony, bbox:{x:minX, y:minY, w:maxX - minX, h:maxY - minY}};
+}
+
+function svgMarkup(geo, sirkaPx){
+  const w = geo.bbox.w + 2 * ODSADENIE, h = geo.bbox.h + 2 * ODSADENIE;
+  const vyskaPx = Math.max(1, Math.round(sirkaPx * h / w));
+  const poly = geo.polygony.map(p =>
+    `<polygon points="${p.body}" fill="${p.farba}"/>`).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"` +
+    ` viewBox="${geo.bbox.x - ODSADENIE} ${geo.bbox.y - ODSADENIE} ${w} ${h}"` +
+    ` width="${Math.max(1, Math.round(sirkaPx))}" height="${vyskaPx}">` +
+    `<g stroke="${HRANA}" stroke-width="2" stroke-linejoin="miter" stroke-miterlimit="2">${poly}</g></svg>`;
+}
+
+/* Jedna kocka pre paletu – rovnaká geometria ako v stavbe. */
+function kockaSVG(hex){
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 110 110" aria-hidden="true" focusable="false">` +
+    `<g stroke="${HRANA}" stroke-width="2" stroke-linejoin="miter" stroke-miterlimit="2">` +
+    `<polygon points="10,30 31,9 99,9 78,30" fill="${hex}"/>` +
+    `<polygon points="78,30 99,9 99,77 78,98" fill="${hex}"/>` +
+    `<polygon points="10,30 78,30 78,98 10,98" fill="${hex}"/>` +
+    `</g></svg>`;
+}
+
+/* ================= MRIEŽKA 4×4 ================= */
+const polia = [];
+function vybudujMriezku(){
+  for(let r = 0; r < 4; r++){
+    for(let c = 0; c < 4; c++){
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pole nula';
+      b.textContent = '0';
+      b.addEventListener('click', () => klikPole(r, c));
+      mriezka.appendChild(b);
+      polia.push(b);
+    }
+  }
+}
+function aktualizujPole(r, c){
+  const n = plan[r][c].length, b = polia[r * 4 + c];
+  b.textContent = String(n);
+  b.classList.toggle('nula', n === 0);
+  b.setAttribute('aria-label',
+    `Riadok ${r + 1}, stĺpec ${c + 1}: ` +
+    (n === 0 ? 'prázdne' : n === 1 ? '1 kocka' : n < 5 ? n + ' kocky' : n + ' kociek'));
+}
+function klikPole(r, c){
+  if(stav !== 'PRIPRAVA') return;
+  const stlp = plan[r][c];
+  if(stlp.length >= MAX_VYSKA) stlp.length = 0;   /* 5 → 0, vrátane farieb */
+  else stlp.push(vybranaFarba);
+  aktualizujPole(r, c);
+  aktualizujPostav();
+}
+function nastavMriezku(aktivna){
+  polia.forEach(b => { b.disabled = !aktivna; });
+}
+
+/* ================= PALETA ================= */
+function vybudujPaletu(){
+  FARBY.forEach((f, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'farba';
+    b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false');
+    b.setAttribute('aria-label', `Farebná kocka: ${f.nazov}`);
+    b.innerHTML = kockaSVG(f.hex) + '<span class="znacka" aria-hidden="true">✓</span>';
+    b.addEventListener('click', () => {
+      if(stav !== 'PRIPRAVA') return;
+      vybranaFarba = i;
+      [...paleta.children].forEach((d, j) =>
+        d.setAttribute('aria-pressed', j === i ? 'true' : 'false'));
+    });
+    paleta.appendChild(b);
+  });
+}
+function nastavPaletu(aktivna){
+  [...paleta.children].forEach(d => { d.disabled = !aktivna; });
+}
+function vyberFarbu(i){
+  vybranaFarba = i;
+  [...paleta.children].forEach((d, j) =>
+    d.setAttribute('aria-pressed', j === i ? 'true' : 'false'));
+}
+
+/* ================= PRECHODY STAVOV ================= */
+function ukazSekciu(sec){
+  for(const s of [secPriprava, secModel, secPrehlad]) s.hidden = (s !== sec);
+}
+function aktualizujPostav(){
+  btnPostav.disabled = (pocetKociek(plan) === 0);
+}
+
+function prejdiDoPripravy(){
+  stav = 'PRIPRAVA';
+  plan = prazdnyPlan();
+  for(let i = 0; i < 16; i++) aktualizujPole(Math.floor(i / 4), i % 4);
+  nastavMriezku(true);
+  nastavPaletu(true);
+  vyberFarbu(0); /* predvolená žltá */
+  nastavPohlad('zpredu'); /* každá nová stavba sa kreslí zpredu */
+  secPriprava.classList.remove('neaktivne');
+  riadokPostav.hidden = false;
+  blokOtazka.hidden = true;
+  udajCislo.textContent = `STAVBA ${historia.length + 1} / ${MAX_STAVIEB}`;
+  aktualizujPostav();
+  ukazSekciu(secPriprava);
+  requestAnimationFrame(layout);
+}
+
+function postavit(){
+  if(stav !== 'PRIPRAVA' || btnPostav.disabled) return;
+  const kopia = plan.map(riadok => riadok.map(stlp => stlp.slice())); /* hlboká kópia */
+  historia.push({plan: kopia});                                       /* uloží sa presne raz */
+  modelSpatDo = 'otazka';
+  aktualnyPlan = kopia;
+  aktualnaGeo = geometria(kopia, pohlad);
+  modelHint.textContent = 'DVOJITÝM ŤUKNUTÍM UKONČÍŠ TÚTO STAVBU';
+  stav = 'MODEL';
+  ukazSekciu(secModel);
+  modelSvg.innerHTML = '';
+  requestAnimationFrame(() => {
+    layout();
+    modelSvg.focus({preventScroll:true});
+  });
+}
+
+function ukonciModel(){
+  if(stav !== 'MODEL') return;
+  if(modelSpatDo === 'prehlad'){          /* návrat zo zväčšenej stavby do prehľadu */
+    modelSpatDo = 'otazka';
+    stav = 'PREHLAD';
+    ukazSekciu(secPrehlad);
+    requestAnimationFrame(() => {
+      layout();
+      btnUkazVsetky.focus({preventScroll:true});
+    });
+    return;
+  }
+  stav = 'OTAZKA';
+  plan = prazdnyPlan(); /* mriežka sa vráti na nuly, uložená stavba sa nemení */
+  for(let i = 0; i < 16; i++) aktualizujPole(Math.floor(i / 4), i % 4);
+  nastavMriezku(false);
+  nastavPaletu(false);
+  secPriprava.classList.add('neaktivne');
+  riadokPostav.hidden = true;
+  blokOtazka.hidden = false;
+  otazkaCislo.textContent = `STAVBA ${historia.length} / ${MAX_STAVIEB}`;
+  const plne = historia.length >= MAX_STAVIEB;
+  btnAno.disabled = plne;
+  otazkaSprava.hidden = !plne;
+  ukazSekciu(secPriprava);
+  requestAnimationFrame(() => {
+    layout();
+    (plne ? btnNie : btnAno).focus({preventScroll:true});
+  });
+}
+
+function potvrditAno(){
+  if(stav !== 'OTAZKA' || btnAno.disabled) return; /* siedma stavba nikdy nevznikne */
+  prejdiDoPripravy();
+}
+function potvrditNie(){
+  if(stav !== 'OTAZKA') return;
+  stav = 'PREHLAD';
+  odhalene = new Set();
+  zrusSekvenciu();
+  ukazSekciu(secPrehlad);
+  vybudujPrehlad();
+  requestAnimationFrame(() => {
+    layout();
+    btnUkazVsetky.focus({preventScroll:true});
+  });
+}
+
+/* ================= POHĽADY NA STAVBU ================= */
+function nastavPohlad(p){
+  pohlad = p;
+  document.querySelectorAll('.sipka').forEach(b =>
+    b.setAttribute('aria-pressed', b.dataset.pohlad === p ? 'true' : 'false'));
+  if(stav === 'MODEL' && aktualnyPlan){
+    aktualnaGeo = geometria(aktualnyPlan, pohlad);
+    velkyModelRozmer();
+  }else if(stav === 'PREHLAD'){
+    prehladRozmer(); /* miniatúry sa prekreslia v novom pohľade */
+  }
+}
+
+/* ================= ZÁVEREČNÝ PREHĽAD ================= */
+function riadkyPrehladu(n){
+  if(n <= 0) return [];
+  if(n <= 3) return [Array.from({length:n}, (_, i) => i)];
+  if(n === 4) return [[0, 1], [2, 3]];
+  if(n === 5) return [[0, 1, 2], [3, 4]];
+  return [[0, 1, 2], [3, 4, 5]];
+}
+function vybudujPrehlad(){
+  prehladMiesta.innerHTML = '';
+  for(const skupina of riadkyPrehladu(historia.length)){
+    const riadok = document.createElement('div');
+    riadok.className = 'prehlad-riadok';
+    for(const i of skupina){
+      const miesto = document.createElement('div');
+      miesto.className = 'miesto';
+      const cislo = document.createElement('button');
+      cislo.type = 'button';
+      cislo.className = 'miesto-cislo';
+      cislo.dataset.i = i;
+      cislo.textContent = String(i + 1);
+      cislo.setAttribute('aria-pressed', 'false');
+      cislo.setAttribute('aria-label', `Odhaliť ${i + 1}. stavbu`);
+      cislo.addEventListener('click', () => odhalit(i));
+      const priestor = document.createElement('div');
+      priestor.className = 'miesto-model';
+      priestor.dataset.i = i;
+      pripojDvojiteTap(priestor, () => zvacsitStavbu(i));
+      miesto.append(cislo, priestor);
+      riadok.appendChild(miesto);
+    }
+    prehladMiesta.appendChild(riadok);
+  }
+  aktualizujUkazVsetky();
+}
+
+function prehladRozmer(){
+  const miestka = [...prehladMiesta.querySelectorAll('.miesto')];
+  if(!miestka.length || !historia.length) return;
+  const box = prehladMiesta.getBoundingClientRect();
+  const skupiny = riadkyPrehladu(historia.length);
+  const stlpce = Math.max(...skupiny.map(s => s.length));
+  const riadkov = skupiny.length;
+  const medzera = 14;
+  const SW = Math.min(
+    Math.floor((box.width - (stlpce - 1) * medzera) / stlpce),
+    Math.floor(((box.height - (riadkov - 1) * medzera) / riadkov) * 1.25),
+    780
+  );
+  const SH = Math.floor((box.height - (riadkov - 1) * medzera) / riadkov);
+  miestka.forEach(m => { m.style.width = SW + 'px'; m.style.height = SH + 'px'; });
+
+  const cisloVyska = prehladMiesta.querySelector('.miesto-cislo').offsetHeight;
+  const modelW = SW - 8, modelH = SH - cisloVyska - 14;
+  const geoPodlaPohl = historia.map(z => geometria(z.plan, pohlad));
+  let mierka = Infinity;
+  for(const g of geoPodlaPohl){ /* spoločná mierka podľa najväčšej stavby v aktívnom pohľade */
+    const w = g.bbox.w + 2 * ODSADENIE, h = g.bbox.h + 2 * ODSADENIE;
+    if(modelW / w < mierka) mierka = modelW / w;
+    if(modelH / h < mierka) mierka = modelH / h;
+  }
+  mierkaMiniatur = Math.max(mierka, 0.02);
+
+  historia.forEach((z, i) => {
+    const priestor = prehladMiesta.querySelector(`.miesto-model[data-i="${i}"]`);
+    priestor.innerHTML = odhalene.has(i)
+      ? svgMarkup(geoPodlaPohl[i], (geoPodlaPohl[i].bbox.w + 2 * ODSADENIE) * mierkaMiniatur)
+      : '';
+  });
+}
+
+function odhalit(i){
+  if(stav !== 'PREHLAD' || odhalene.has(i)) return; /* jednostranné, bez zdvojenia */
+  odhalene.add(i);
+  const priestor = prehladMiesta.querySelector(`.miesto-model[data-i="${i}"]`);
+  if(priestor && historia[i]){
+    const g = geometria(historia[i].plan, pohlad);
+    priestor.innerHTML = svgMarkup(g, (g.bbox.w + 2 * ODSADENIE) * mierkaMiniatur);
+  }
+  const cislo = prehladMiesta.querySelector(`.miesto-cislo[data-i="${i}"]`);
+  if(cislo){
+    cislo.classList.add('odhalene');
+    cislo.setAttribute('aria-pressed', 'true');
+  }
+  aktualizujUkazVsetky();
+}
+
+/* Zväčšený náhľad stavby z prehľadu – z aktívneho pohľadu.
+   Dvojité ťuknutie sa vráti do prehľadu (bez otázky ÁNO/NIE). */
+function zvacsitStavbu(i){
+  if(stav !== 'PREHLAD' || !odhalene.has(i) || !historia[i]) return;
+  modelSpatDo = 'prehlad';
+  aktualnyPlan = historia[i].plan;
+  aktualnaGeo = geometria(aktualnyPlan, pohlad);
+  modelHint.textContent = 'DVOJITÝM ŤUKNUTÍM SA VRÁTIŠ DO PREHĽADU';
+  stav = 'MODEL';
+  ukazSekciu(secModel);
+  modelSvg.innerHTML = '';
+  requestAnimationFrame(() => {
+    layout();
+    modelSvg.focus({preventScroll:true});
+  });
+}
+
+function aktualizujUkazVsetky(){
+  const vsetky = historia.length > 0 && historia.every((_, i) => odhalene.has(i));
+  btnUkazVsetky.disabled = vsetky || sekvenciaBezi;
+}
+
+function ukazVsetky(){
+  if(stav !== 'PREHLAD' || sekvenciaBezi) return;      /* žiadne súbežné časovače */
+  if(historia.every((_, i) => odhalene.has(i))) return;
+  sekvenciaBezi = true;
+  aktualizujUkazVsetky();
+  const krok = () => {
+    const dalsia = historia.findIndex((_, i) => !odhalene.has(i)); /* preskočí odhalené */
+    if(dalsia === -1){
+      sekvenciaBezi = false; casovac = null;
+      aktualizujUkazVsetky();
+      return;
+    }
+    odhalit(dalsia);
+    casovac = setTimeout(krok, 1000);
+  };
+  krok(); /* prvá skrytá okamžite, ďalšie po jednej sekunde */
+}
+
+function zrusSekvenciu(){
+  if(casovac){ clearTimeout(casovac); casovac = null; }
+  sekvenciaBezi = false;
+}
+
+function novyCyklus(){
+  zrusSekvenciu();
+  historia = [];
+  odhalene = new Set();
+  prejdiDoPripravy();
+}
+
+/* ================= VEĽKÝ MODEL ================= */
+function velkyModelRozmer(){
+  if(!aktualnaGeo) return;
+  const box = modelPlocha.getBoundingClientRect();
+  const w = aktualnaGeo.bbox.w + 2 * ODSADENIE, h = aktualnaGeo.bbox.h + 2 * ODSADENIE;
+  /* polovica plného zmestenia – okolo stavby zostáva miesto pre šípky */
+  const scale = Math.max(0.02, Math.min((box.width - 24) / w, (box.height - 24) / h) * 0.5);
+  modelSvg.innerHTML = svgMarkup(aktualnaGeo, w * scale);
+}
+
+/* ================= DVOJITÉ KLIK / ŤUKNUTIE =================
+   Dve rýchle stlačenia (≤ 350 ms, < 60 px) alebo natívna udalosť dblclick.
+  Niektoré prostredia pošlú pri dvojkliku len jednu pointerdown + dblclick,
+   preto sa ošetria obe cesty; stavová podmienka bráni dvojitému prechodu. */
+function pripojDvojiteTap(el, cb, ignoruj){
+  let posledneT = 0, posledneX = 0, posledneY = 0;
+  el.addEventListener('pointerdown', e => {
+    if(ignoruj && ignoruj(e)) return;
+    const t = performance.now();
+    const vzdialenost = Math.hypot(e.clientX - posledneX, e.clientY - posledneY);
+    if(t - posledneT < 350 && vzdialenost < 60){
+      posledneT = 0;           /* jedno gesto = jeden prechod */
+      cb();
+    }else{
+      posledneT = t; posledneX = e.clientX; posledneY = e.clientY;
+    }
+  });
+  el.addEventListener('dblclick', e => {
+    if(ignoruj && ignoruj(e)) return;
+    cb();
+  });
+}
+pripojDvojiteTap(secModel, ukonciModel, e => !!e.target.closest('.sipka'));
+modelSvg.addEventListener('keydown', e => {
+  if(stav === 'MODEL' && (e.key === 'Enter' || e.key === ' ')){
+    e.preventDefault();
+    ukonciModel();
+  }
+});
+
+/* ================= VEĽKOSŤ A ROZLOŽENIE ================= */
+function pripravaRozmer(){
+  const stred = $('priprava-stred');
+  const vyska = stred.clientHeight - napoveda.offsetHeight - 10;
+  const S = Math.max(200, Math.min(stred.clientWidth - 8, vyska, 680));
+  mriezka.style.width = S + 'px';
+  mriezka.style.height = S + 'px';
+  mriezka.style.setProperty('--cislo', Math.round(S / 4 * 0.46) + 'px');
+  const kocka = Math.max(56, Math.min(96, Math.floor((window.innerWidth - 200) / 5)));
+  paleta.style.setProperty('--kocka', kocka + 'px');
+}
+function layout(){
+  if(stav === 'PRIPRAVA' || stav === 'OTAZKA') pripravaRozmer();
+  else if(stav === 'MODEL') velkyModelRozmer();
+  else if(stav === 'PREHLAD') prehladRozmer();
+}
+
+/* ================= CELÁ OBRAZOVKA ================= */
+function jeFullscreen(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+btnFullscreen.addEventListener('click', () => {
+  try{
+    if(jeFullscreen()){
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    }else{
+      const el = document.documentElement;
+      const req = el.requestFullscreen || el.webkitRequestFullscreen;
+      if(req) req.call(el);
+    }
+  }catch(err){ /* bez celej obrazovky ostáva aplikácia plne použiteľná */ }
+});
+function aktualizujFullscreenTlacidlo(){
+  btnFullscreen.textContent = jeFullscreen() ? 'UKONČIŤ CELÚ OBRAZOVKU' : 'CELÁ OBRAZOVKA';
+}
+document.addEventListener('fullscreenchange', aktualizujFullscreenTlacidlo);
+document.addEventListener('webkitfullscreenchange', aktualizujFullscreenTlacidlo);
+
+/* ================= INICIALIZÁCIA ================= */
+vybudujMriezku();
+vybudujPaletu();
+btnPostav.addEventListener('click', postavit);
+btnAno.addEventListener('click', potvrditAno);
+btnNie.addEventListener('click', potvrditNie);
+btnUkazVsetky.addEventListener('click', ukazVsetky);
+btnNovyCyklus.addEventListener('click', novyCyklus);
+document.querySelectorAll('.sipka').forEach(b =>
+  b.addEventListener('click', () => nastavPohlad(b.dataset.pohlad)));
+window.addEventListener('resize', layout);
+$('app').addEventListener('contextmenu', e => e.preventDefault());
+/* Klávesnica: Enter aj medzerník aktivujú tlačidlá – jedno spustenie nezávisle od platformy */
+document.addEventListener('keydown', e => {
+  if((e.key === 'Enter' || e.key === ' ') &&
+     e.target instanceof HTMLButtonElement && !e.target.disabled){
+    e.preventDefault();
+    e.target.click();
+  }
+});
+prejdiDoPripravy();
+})();
+</script>
+</body>
+</html>
